@@ -1,0 +1,60 @@
+library('ISLR')
+library("gam")
+library('boot')
+data("Auto")
+#There is no direct way to answer if there are nonlinear realtionships between any feature 
+#in the data set. We have to choose a feature as the response, some others as predictors. 
+#And investigate if the relationship between them is linear or not.
+#Get the overall relationship between all pairs of the Auto data set:
+
+set.seed(100)
+pairs(Auto)
+
+#From the plot above we can see when using mpg as the response, there are clear 
+#relationships between it and cylinders, displacement, horsepower, weight. 
+#Now we will find out if they are nonlinear or not.
+
+fit1 <- lm(mpg~ poly(cylinders,2)+poly(displacement,5)+poly(horsepower,5)+poly(weight,5)
+           , data =Auto )
+summary(fit1)
+
+#The results show that there is no significant relationship between mpg and cylinders. 
+#There is a weak relationship (p-value: 0.028) between mpg and displacement. There is strong
+#quadratic relation between mpg and horsepower. There is a strong linear relation between 
+#mpg and weight.
+
+#Testing the degree with ANOVA
+
+an1 <- gam(mpg~ displacement+horsepower+weight, data=Auto)
+an2 <- gam(mpg~ displacement+s(horsepower,2)+weight, data=Auto)
+an3 <- gam(mpg~ s(displacement,5)+s(horsepower,5)+s(weight,5), data=Auto)
+
+anova(an1,an2,an3, test='F')
+
+summary(an3)
+
+#According to plot of anv3, try quadratic with displacement and horsepower, linear with
+#weight:
+
+par(mfrow=c(1,3))
+plot.Gam(an3, se=3, col='Blue')
+
+
+an4 <- gam(mpg~ s(displacement,3)+s(horsepower,3)+weight, data=Auto)
+plot.Gam(an4,se=3,col='Green')
+
+#an4 looks good enough
+
+#No lets compare their test MSE
+
+lm1 <- glm(mpg~ displacement+horsepower+weight, data = Auto)
+lm2 <- glm(mpg~ poly(displacement,3)+poly(horsepower,3)+weight, data=Auto )
+lm3 <- glm(mpg~poly(displacement,5)+poly(horsepower,5)+poly(weight,5), data=Auto)
+
+cv.glm(Auto,lm1, K=10)$delta[1]
+cv.glm(Auto,lm2, K=10)$delta[1]
+cv.glm(Auto,lm3, K=10)$delta[1]
+
+#The results also suggest model lm2 (same with anv4) is good enough.
+#So the conclusion of relationships with mpg: mpg ~ displacement: cubic; 
+#mpg ~ horsepower: cubic; mpg ~ weight: linear.
